@@ -15,6 +15,8 @@ package com.lizhe.bhrpcprovidercommon.server.base;
  * limitations under the License.
  */
 
+import com.lizhe.bhrpccodec.RpcDecoder;
+import com.lizhe.bhrpccodec.RpcEncoder;
 import com.lizhe.bhrpcprovidercommon.handler.RpcProviderHandler;
 import com.lizhe.bhrpcprovidercommon.server.api.Server;
 import io.netty.bootstrap.ServerBootstrap;
@@ -25,8 +27,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
@@ -83,11 +83,9 @@ public class BaseServer implements Server {
                         protected void initChannel(SocketChannel channel) {
                             // 初始化通道的处理管道
                             channel.pipeline()
-                                    //TODO 预留编解码，需要实现自定义协议
-                                    // 添加字符串解码器，将接收到的字节转换为字符串
-                                    .addLast(new StringDecoder())
+                                    .addLast(new RpcDecoder())
                                     // 添加字符串编码器，将字符串转换为字节发送
-                                    .addLast(new StringEncoder())
+                                    .addLast(new RpcEncoder())
                                     // 添加自定义的处理器处理接收到的消息
                                     .addLast(new RpcProviderHandler(handlerMap));
                         }
