@@ -15,6 +15,7 @@
     <modules>
         <module>bhrpc-test-scanner</module>
         <module>bhrpc-test-provider</module>
+        <module>bhrpc-test-consumer</module>
     </modules>
 
     <dependencies>
