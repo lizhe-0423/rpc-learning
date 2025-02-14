@@ -1,6 +1,7 @@
 package com.lizhe.bhrpccommon.scanner.service;
 
 import com.lizhe.bhrpcannotation.RpcService;
+import com.lizhe.bhrpccommon.helper.RpcServiceHelper;
 import com.lizhe.bhrpccommon.scanner.ClassScanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +53,7 @@ public class RpcServiceScanner extends ClassScanner {
                     //handlerMap中的key先简单存储为serviceName+version+group，后续根据实际情况处理key
                     // 构建服务的唯一标识键
                     String serviceName = getServiceName(rpcService);
-                    String key = serviceName.concat(rpcService.version()).concat(rpcService.group());
+                    String key = RpcServiceHelper.buildServiceKey(serviceName, rpcService.version(), rpcService.group());
                     // 实例化类，并存储到映射中
                     handlerMap.put(key, clazz.newInstance());
                 }
