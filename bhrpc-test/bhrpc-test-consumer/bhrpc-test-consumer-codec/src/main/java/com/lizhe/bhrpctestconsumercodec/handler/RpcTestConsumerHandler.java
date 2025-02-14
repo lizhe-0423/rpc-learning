@@ -30,7 +30,7 @@ public class RpcTestConsumerHandler extends SimpleChannelInboundHandler<RpcProto
         RpcProtocol<RpcRequest> protocol = new RpcProtocol<>();
         protocol.setHeader(RpcHeaderFactory.getRpcRequestHeader("jdk"));
         RpcRequest request = new RpcRequest();
-        request.setClassName("lizhe.rpc.test.DemoService");
+        request.setClassName("com.lizhe.bhrpctestapi.DemoService");
         request.setGroup("test");
         request.setMethodName("sayHello");
         request.setParameters(new Object[]{"lizhe"});

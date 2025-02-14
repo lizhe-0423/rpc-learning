@@ -1,6 +1,5 @@
 package com.lizhe.bhrpcprovidercommon.handler;
 
-import com.alibaba.fastjson.JSON;
 import com.lizhe.bhrpccommon.helper.RpcServiceHelper;
 import com.lizhe.bhrpccommon.threadpool.ServerThreadPool;
 import com.lizhe.bhrpcprotocol.RpcProtocol;
@@ -19,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * RpcProviderHandle
@@ -94,17 +92,17 @@ public class RpcProviderHandler extends SimpleChannelInboundHandler<RpcProtocol<
         return responseRpcProtocol;
     }
 
-    private Object handle(RpcRequest request) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
+    private Object handle(RpcRequest request) throws Throwable  {
         String builtServiceKey = RpcServiceHelper.buildServiceKey(request.getClassName(), request.getVersion(), request.getGroup());
         Object serviceBean = handlerMap.get(builtServiceKey);
-        String methodName = request.getMethodName();
-
         if (serviceBean == null) {
-            throw new RuntimeException(String.format("service not exist: %s:%s", request.getClassName(), methodName));
+            throw new RuntimeException(String.format("service not exist: %s:%s", request.getClassName(), request.getMethodName()));
         }
+        String methodName = request.getMethodName();
+        Class<?> serviceBeanClass = serviceBean.getClass();
         Class<?>[] parameterTypes = request.getParameterTypes();
         Object[] parameters = request.getParameters();
-        Class<?> serviceBeanClass = serviceBean.getClass();
+
         LOGGER.debug(serviceBeanClass.getName());
         LOGGER.debug(methodName);
         if (parameterTypes != null && parameterTypes.length > 0){
