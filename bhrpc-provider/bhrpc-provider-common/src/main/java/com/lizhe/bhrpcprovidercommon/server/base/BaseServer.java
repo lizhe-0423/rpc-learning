@@ -52,11 +52,14 @@ public class BaseServer implements Server {
     //存储的是实体类关系
     protected Map<String, Object> handlerMap = new HashMap<>();
 
-    public BaseServer(String serverAddress) {
+    private String reflectType;
+
+    public BaseServer(String serverAddress,String reflectType) {
         if (StringUtils.hasText(serverAddress)) {
             String[] serverArray = serverAddress.split(":");
             this.host = serverArray[0];
             this.port = Integer.parseInt(serverArray[1]);
+            this.reflectType = reflectType;
         }
     }
 
@@ -87,7 +90,7 @@ public class BaseServer implements Server {
                                     // 添加字符串编码器，将字符串转换为字节发送
                                     .addLast(new RpcEncoder())
                                     // 添加自定义的处理器处理接收到的消息
-                                    .addLast(new RpcProviderHandler(handlerMap));
+                                    .addLast(new RpcProviderHandler(reflectType,handlerMap));
                         }
                     })
                     .option(ChannelOption.SO_BACKLOG, 128)
