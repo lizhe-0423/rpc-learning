@@ -1,5 +1,6 @@
 package com.lizhe.bhrpccommon.scanner.service;
 
+import com.alibaba.fastjson.JSON;
 import com.lizhe.bhrpcannotation.RpcService;
 import com.lizhe.bhrpccommon.helper.RpcServiceHelper;
 import com.lizhe.bhrpccommon.scanner.ClassScanner;
@@ -62,10 +63,11 @@ public class RpcServiceScanner extends ClassScanner {
                 LOGGER.error("scan classes throws exception: {}", e.getMessage(), e);
             }
         });
+
+        LOGGER.info("scan classes size : {} class{}", handlerMap.size(), JSON.toJSON(handlerMap));
         // 返回存储了服务实例的映射
         return handlerMap;
     }
-
 
     /**
      * 获取serviceName

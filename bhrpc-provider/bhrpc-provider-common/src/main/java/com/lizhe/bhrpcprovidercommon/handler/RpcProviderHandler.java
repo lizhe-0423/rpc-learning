@@ -9,7 +9,6 @@ import com.lizhe.bhrpcprotocol.enumeration.RpcType;
 import com.lizhe.bhrpcprotocol.header.RpcHeader;
 import com.lizhe.bhrpcprotocol.request.RpcRequest;
 import com.lizhe.bhrpcprotocol.response.RpcResponse;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -37,7 +36,7 @@ public class RpcProviderHandler extends SimpleChannelInboundHandler<RpcProtocol<
     //调用采用哪种类型调用真实方法
     private final String reflectType;
 
-    public RpcProviderHandler(String reflectType,Map<String, Object> handlerMap) {
+    public RpcProviderHandler(String reflectType, Map<String, Object> handlerMap) {
         this.handlerMap = handlerMap;
         this.reflectType = reflectType;
     }
@@ -72,31 +71,10 @@ public class RpcProviderHandler extends SimpleChannelInboundHandler<RpcProtocol<
             }
             responseRpcProtocol.setHeader(header);
             responseRpcProtocol.setBody(response);
-            ctx.writeAndFlush(responseRpcProtocol).addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture channelFuture) throws Exception {
-                    LOGGER.debug("Send response for request {}", header.getRequestId());
-                }
-            });
+            ctx.writeAndFlush(responseRpcProtocol).addListener((ChannelFutureListener) channelFuture -> LOGGER.debug("Send response for request {}", header.getRequestId()));
         });
     }
 
-    private static RpcProtocol<RpcResponse> getRpcResponseRpcProtocol(RpcProtocol<RpcRequest> protocol) {
-        RpcHeader header = protocol.getHeader();
-        RpcRequest request = protocol.getBody();
-
-        //将消息类型设置为响应类型的消息
-        header.setMsgType((byte) RpcType.RESPONSE.getType());
-        //构建响应协议数据
-        RpcProtocol<RpcResponse> responseRpcProtocol = new RpcProtocol<>();
-        RpcResponse rpcResponse = new RpcResponse();
-        rpcResponse.setResult("数据交互成功");
-        rpcResponse.setAsync(request.getAsync());
-        rpcResponse.setOneway(request.getOneway());
-        responseRpcProtocol.setHeader(header);
-        responseRpcProtocol.setBody(rpcResponse);
-        return responseRpcProtocol;
-    }
 
     private Object handle(RpcRequest request) throws Throwable {
         String builtServiceKey = RpcServiceHelper.buildServiceKey(request.getClassName(), request.getVersion(), request.getGroup());
@@ -164,11 +142,10 @@ public class RpcProviderHandler extends SimpleChannelInboundHandler<RpcProtocol<
      * @param parameterTypes 方法参数类型的数组，用于准确匹配方法签名。
      * @param parameters     传递给方法的参数值数组。
      * @return 方法执行的结果，返回为 Object 类型。
-     * @throws NoSuchMethodException     如果未找到指定名称和参数类型的方法。
      * @throws InvocationTargetException 如果调用的方法抛出异常。
      * @throws IllegalAccessException    如果无法访问该方法。
      */
-    private Object invokeCgLibMethod(Object serviceBean, Class<?> serviceClass, String methodName, Class<?>[] parameterTypes, Object[] parameters) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    private Object invokeCgLibMethod(Object serviceBean, Class<?> serviceClass, String methodName, Class<?>[] parameterTypes, Object[] parameters) throws InvocationTargetException, IllegalAccessException {
         // Cglib 反射
         LOGGER.info("使用 Cglib 反射类型调用方法...");
         // 创建目标类的 FastClass 实例，用于高效的方法调用。

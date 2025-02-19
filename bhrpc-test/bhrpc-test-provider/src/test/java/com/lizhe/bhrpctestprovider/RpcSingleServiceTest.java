@@ -12,10 +12,11 @@ import org.junit.Test;
  * {@code @date} 2025/2/12 上午9:46
  * @version 1.0
  */
+//@VMParameter(value = "--add-opens java.base/java.lang=ALL-UNNAMED")
 public class RpcSingleServiceTest {
     @Test
     public void startRpcSingleServer(){
-        RpcSingleServer singleServer = new RpcSingleServer("127.0.0.1:27880", "com.lizhe","cglib");
+        RpcSingleServer singleServer = new RpcSingleServer("127.0.0.1:27880", "com.lizhe","jdk");
         singleServer.startNettyServer();
     }
 }
