@@ -97,7 +97,7 @@ public class RpcConsumer {
      * @param rpcRequestRpcProtocol RPC请求协议对象，包含请求的具体信息
      * @throws InterruptedException 当连接过程中断时抛出
      */
-    public void sendRequest(RpcProtocol<RpcRequest> rpcRequestRpcProtocol) throws InterruptedException {
+    public Object sendRequest(RpcProtocol<RpcRequest> rpcRequestRpcProtocol) throws InterruptedException {
         //todo 暂时写死 后续引入到注册中心
         String serviceAddress = "127.0.0.1";
         int port = 27880;
@@ -116,7 +116,7 @@ public class RpcConsumer {
             handler = getRpcConsumerHandler(serviceAddress, port);
             handlerMap.put(key, handler);
         }
-        handler.sendRequest(rpcRequestRpcProtocol);
+        return handler.sendRequest(rpcRequestRpcProtocol);
     }
 
     /**

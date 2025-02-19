@@ -32,7 +32,9 @@ import java.util.Map;
 public class RpcProviderHandler extends SimpleChannelInboundHandler<RpcProtocol<RpcRequest>> {
     private static final Logger LOGGER = LoggerFactory.getLogger(RpcProviderHandler.class.getName());
 
+    //存储服务名称#版本号#分组与对象实例的映射关系
     private final Map<String, Object> handlerMap;
+
     //调用采用哪种类型调用真实方法
     private final String reflectType;
 
