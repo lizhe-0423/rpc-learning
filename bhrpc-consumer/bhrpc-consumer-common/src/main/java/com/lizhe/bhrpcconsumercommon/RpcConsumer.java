@@ -4,6 +4,7 @@ import com.lizhe.bhrpcconsumercommon.handle.RpcConsumerHandler;
 import com.lizhe.bhrpcconsumercommon.initializer.RpcConsumerInitializer;
 import com.lizhe.bhrpcprotocol.RpcProtocol;
 import com.lizhe.bhrpcprotocol.request.RpcRequest;
+import future.RPCFuture;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -97,7 +98,7 @@ public class RpcConsumer {
      * @param rpcRequestRpcProtocol RPC请求协议对象，包含请求的具体信息
      * @throws InterruptedException 当连接过程中断时抛出
      */
-    public Object sendRequest(RpcProtocol<RpcRequest> rpcRequestRpcProtocol) throws InterruptedException {
+    public RPCFuture sendRequest(RpcProtocol<RpcRequest> rpcRequestRpcProtocol) throws InterruptedException {
         //todo 暂时写死 后续引入到注册中心
         String serviceAddress = "127.0.0.1";
         int port = 27880;

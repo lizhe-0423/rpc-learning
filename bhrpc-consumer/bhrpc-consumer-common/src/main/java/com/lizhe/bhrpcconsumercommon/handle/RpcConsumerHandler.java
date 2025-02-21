@@ -5,6 +5,7 @@ import com.lizhe.bhrpcprotocol.RpcProtocol;
 import com.lizhe.bhrpcprotocol.header.RpcHeader;
 import com.lizhe.bhrpcprotocol.request.RpcRequest;
 import com.lizhe.bhrpcprotocol.response.RpcResponse;
+import future.RPCFuture;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
@@ -41,7 +42,10 @@ public class RpcConsumerHandler extends SimpleChannelInboundHandler<RpcProtocol<
      * 3. 异常处理：可以优雅地处理异步操作中的异常
      * 4. 链式调用：支持多个异步操作的组合
      */
-    private Map<Long, CompletableFuture<RpcProtocol<RpcResponse>>> pendingResponse = new ConcurrentHashMap<>();
+    //存储请求ID与RpcResponse协议的映射关系
+    //private Map<Long, RpcProtocol<RpcResponse>> pendingResponse = new ConcurrentHashMap<>();
+
+    private final Map<Long, RPCFuture> pendingRPC = new ConcurrentHashMap<>();
     private volatile Channel channel;
     private SocketAddress remotePeer;
 
@@ -80,11 +84,9 @@ public class RpcConsumerHandler extends SimpleChannelInboundHandler<RpcProtocol<
         logger.info("服务消费者接收到的数据===>>>{}", JSON.toJSONString(rpcResponseRpcProtocol));
         RpcHeader header = rpcResponseRpcProtocol.getHeader();
         long requestId = header.getRequestId();
-        // 根据请求ID获取并移除对应的Future
-        CompletableFuture<RpcProtocol<RpcResponse>> future = pendingResponse.remove(requestId);
-        if (future != null) {
-            // 设置Future的结果，这将唤醒在sendRequest方法中等待的线程
-            future.complete(rpcResponseRpcProtocol);
+        RPCFuture rpcFuture = pendingRPC.remove(requestId);
+        if (rpcFuture != null){
+            rpcFuture.done(rpcResponseRpcProtocol);
         }
     }
 
@@ -98,33 +100,21 @@ public class RpcConsumerHandler extends SimpleChannelInboundHandler<RpcProtocol<
      * @param rpcRequestRpcProtocol RPC请求协议对象
      * @return 服务提供者的响应结果
      */
-    public Object sendRequest(RpcProtocol<RpcRequest> rpcRequestRpcProtocol) {
+    public RPCFuture sendRequest(RpcProtocol<RpcRequest> rpcRequestRpcProtocol) {
         logger.info("服务消费者发送的数据===>>>{}", JSON.toJSONString(rpcRequestRpcProtocol));
-        RpcHeader header = rpcRequestRpcProtocol.getHeader();
-        long requestId = header.getRequestId();
-
-        // 创建CompletableFuture用于异步接收响应
-        CompletableFuture<RpcProtocol<RpcResponse>> resultFuture = new CompletableFuture<>();
-        pendingResponse.put(requestId, resultFuture);
-
-        // 发送请求，并处理发送失败的情况
-        channel.writeAndFlush(rpcRequestRpcProtocol).addListener((ChannelFutureListener) future -> {
-            if (!future.isSuccess()) {
-                resultFuture.completeExceptionally(future.cause());
-                pendingResponse.remove(requestId);
-            }
-        });
-
-        try {
-            // 等待响应，支持超时控制
-            RpcProtocol<RpcResponse> responseRpcProtocol = resultFuture.get(30, TimeUnit.SECONDS);
-            return responseRpcProtocol.getBody().getResult();
-        } catch (Exception e) {
-            // 发生异常时，清理资源并抛出运行时异常
-            pendingResponse.remove(requestId);
-            throw new RuntimeException("调用服务失败", e);
-        }
+        RPCFuture rpcFuture = this.getRpcFuture(rpcRequestRpcProtocol);
+        channel.writeAndFlush(rpcRequestRpcProtocol);
+        return rpcFuture;
     }
+
+    private RPCFuture getRpcFuture(RpcProtocol<RpcRequest> protocol) {
+        RPCFuture rpcFuture = new RPCFuture(protocol);
+        RpcHeader header = protocol.getHeader();
+        long requestId = header.getRequestId();
+        pendingRPC.put(requestId, rpcFuture);
+        return rpcFuture;
+    }
+
 
     public void close() {
         channel.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
