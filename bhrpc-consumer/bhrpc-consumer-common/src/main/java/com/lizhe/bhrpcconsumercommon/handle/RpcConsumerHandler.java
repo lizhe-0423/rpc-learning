@@ -1,6 +1,7 @@
 package com.lizhe.bhrpcconsumercommon.handle;
 
 import com.alibaba.fastjson.JSON;
+import com.lizhe.bhrpcconsumercommon.context.RpcContext;
 import com.lizhe.bhrpcprotocol.RpcProtocol;
 import com.lizhe.bhrpcprotocol.header.RpcHeader;
 import com.lizhe.bhrpcprotocol.request.RpcRequest;
@@ -15,10 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.SocketAddress;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.Map;
 
 /**
@@ -100,11 +98,28 @@ public class RpcConsumerHandler extends SimpleChannelInboundHandler<RpcProtocol<
      * @param rpcRequestRpcProtocol RPC请求协议对象
      * @return 服务提供者的响应结果
      */
-    public RPCFuture sendRequest(RpcProtocol<RpcRequest> rpcRequestRpcProtocol) {
+    public RPCFuture sendRequest(RpcProtocol<RpcRequest> rpcRequestRpcProtocol,boolean async, boolean oneway) {
         logger.info("服务消费者发送的数据===>>>{}", JSON.toJSONString(rpcRequestRpcProtocol));
+        return oneway ? sendRequestOneway(rpcRequestRpcProtocol) : async ? sendRequestAsync(rpcRequestRpcProtocol) : sendRequestSync(rpcRequestRpcProtocol);
+    }
+
+    private RPCFuture sendRequestSync(RpcProtocol<RpcRequest> rpcRequestRpcProtocol){
         RPCFuture rpcFuture = this.getRpcFuture(rpcRequestRpcProtocol);
         channel.writeAndFlush(rpcRequestRpcProtocol);
         return rpcFuture;
+    }
+
+    private RPCFuture sendRequestAsync(RpcProtocol<RpcRequest> rpcRequestRpcProtocol){
+        RPCFuture rpcFuture = this.getRpcFuture(rpcRequestRpcProtocol);
+        //如果是异步调用，则将RPCFuture放入RpcContext
+        RpcContext.getContext().setRPCFuture(rpcFuture);
+        channel.writeAndFlush(rpcRequestRpcProtocol);
+        return null;
+    }
+
+    private RPCFuture sendRequestOneway(RpcProtocol<RpcRequest> protocol) {
+        channel.writeAndFlush(protocol);
+        return null;
     }
 
     private RPCFuture getRpcFuture(RpcProtocol<RpcRequest> protocol) {
