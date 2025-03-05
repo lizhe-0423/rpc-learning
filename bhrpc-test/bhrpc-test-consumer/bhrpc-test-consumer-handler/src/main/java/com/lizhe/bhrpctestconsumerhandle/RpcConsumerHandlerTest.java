@@ -1,6 +1,8 @@
 package com.lizhe.bhrpctestconsumerhandle;
 
 import com.lizhe.bhrpcconsumercommon.RpcConsumer;
+import com.lizhe.bhrpcconsumercommon.callback.AsyncRPCCallback;
+import com.lizhe.bhrpcconsumercommon.future.RPCFuture;
 import com.lizhe.bhrpcprotocol.RpcProtocol;
 import com.lizhe.bhrpcprotocol.header.RpcHeaderFactory;
 import com.lizhe.bhrpcprotocol.request.RpcRequest;
@@ -21,9 +23,19 @@ public class RpcConsumerHandlerTest {
 
     public static void main(String[] args) throws Exception {
         RpcConsumer consumer = RpcConsumer.getInstance();
-        Object result = consumer.sendRequest(getRpcRequestProtocol());
-        Thread.sleep(2000);
-        LOGGER.info("从服务消费者获取到的数据===>>>{}", result.toString());
+        RPCFuture rpcFuture = consumer.sendRequest(getRpcRequestProtocol());
+        rpcFuture.addCallback(new AsyncRPCCallback() {
+            @Override
+            public void onSuccess(Object result) {
+                LOGGER.info("从服务消费者获取到的数据===>>>" + result);
+            }
+
+            @Override
+            public void onException(Exception e) {
+                LOGGER.info("抛出了异常===>>>" + e);
+            }
+        });
+        Thread.sleep(200);
         consumer.close();
     }
 

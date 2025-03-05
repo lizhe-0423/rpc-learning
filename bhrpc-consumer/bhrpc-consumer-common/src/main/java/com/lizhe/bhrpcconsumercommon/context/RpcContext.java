@@ -1,6 +1,6 @@
 package com.lizhe.bhrpcconsumercommon.context;
 
-import future.RPCFuture;
+import com.lizhe.bhrpcconsumercommon.future.RPCFuture;
 
 /**
  * RpcContext

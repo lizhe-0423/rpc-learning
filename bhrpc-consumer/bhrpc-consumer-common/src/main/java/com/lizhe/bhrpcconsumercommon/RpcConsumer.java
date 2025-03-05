@@ -2,9 +2,10 @@ package com.lizhe.bhrpcconsumercommon;
 
 import com.lizhe.bhrpcconsumercommon.handle.RpcConsumerHandler;
 import com.lizhe.bhrpcconsumercommon.initializer.RpcConsumerInitializer;
+import com.lizhe.bhrpcconsumercommon.threadpool.ClientThreadPool;
 import com.lizhe.bhrpcprotocol.RpcProtocol;
 import com.lizhe.bhrpcprotocol.request.RpcRequest;
-import future.RPCFuture;
+import com.lizhe.bhrpcconsumercommon.future.RPCFuture;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -90,6 +91,7 @@ public class RpcConsumer {
      */
     public void close() {
         eventLoopGroup.shutdownGracefully();
+        ClientThreadPool.shutdown();
     }
 
     /**

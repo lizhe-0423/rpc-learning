@@ -1,16 +1,21 @@
-package future;
+package com.lizhe.bhrpcconsumercommon.future;
 
+import com.lizhe.bhrpcconsumercommon.callback.AsyncRPCCallback;
+import com.lizhe.bhrpcconsumercommon.threadpool.ClientThreadPool;
 import com.lizhe.bhrpcprotocol.RpcProtocol;
 import com.lizhe.bhrpcprotocol.request.RpcRequest;
 import com.lizhe.bhrpcprotocol.response.RpcResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * RpcFuture
@@ -29,15 +34,17 @@ public class RPCFuture extends CompletableFuture<Object> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RPCFuture.class);
     // 使用AQS实现的同步器，用于控制请求完成状态
-    private Sync sync;
+    private final Sync sync;
+    // 线程锁，用于控制请求的并发访问
+    private final ReentrantLock lock = new ReentrantLock();
+    // 待处理的异步回调函数列表
+    private final List<AsyncRPCCallback> pendingCallbacks = new ArrayList<AsyncRPCCallback>();
     // 原始RPC请求协议
     private final RpcProtocol<RpcRequest> requestRpcProtocol;
     // RPC响应协议
     private RpcProtocol<RpcResponse> responseRpcProtocol;
     // 请求开始时间，用于计算响应耗时
     private final long startTime;
-    // 响应时间阈值（毫秒），超过此值将记录警告日志
-    private final long responseTimeThreshold = 5000;
 
     public RPCFuture(RpcProtocol<RpcRequest> requestRpcProtocol) {
         this.sync = new Sync();
@@ -110,12 +117,88 @@ public class RPCFuture extends CompletableFuture<Object> {
     public void done(RpcProtocol<RpcResponse> responseRpcProtocol) {
         this.responseRpcProtocol = responseRpcProtocol;
         sync.release(1);
+        invokeCallbacks();
         //计算并检查响应时间
         long responseTime = System.currentTimeMillis() - startTime;
-        if (responseTime > this.responseTimeThreshold) {
+        // 响应时间阈值（毫秒），超过此值将记录警告日志
+        long responseTimeThreshold = 5000;
+        if (responseTime > responseTimeThreshold) {
             LOGGER.warn("Service response time is too slow. Request id = {}. Response Time = {}ms", responseRpcProtocol.getHeader().getRequestId(), responseTime);
         }
     }
+
+    /**
+     * 执行所有挂起的回调方法
+     * 此方法主要用于处理所有待处理的异步RPC回调，它会在一个安全的同步环境中执行每个回调
+     * 使用锁机制确保线程安全，避免并发问题
+     */
+    private void invokeCallbacks() {
+        // 加锁，确保线程安全
+        lock.lock();
+        try {
+            // 遍历所有挂起的回调方法
+            for (final AsyncRPCCallback callback : pendingCallbacks) {
+                // 执行当前回调方法
+                runCallback(callback);
+            }
+        } finally {
+            // 无论try块中发生什么，最终都要解锁，以确保不会发生死锁
+            lock.unlock();
+        }
+    }
+
+
+    /**
+     * 为异步RPC调用添加回调对象
+     * 此方法允许在RPC调用进行中或完成后执行特定操作
+     *
+     * @param callback 实现了AsyncRPCCallback接口的回调对象，用于在调用完成时执行
+     * @return 返回当前的RPCFuture对象，支持链式调用
+     */
+    public RPCFuture addCallback(AsyncRPCCallback callback) {
+        // 加锁以确保线程安全
+        lock.lock();
+        try {
+            // 检查RPC调用是否已经完成
+            if (isDone()) {
+                // 如果已经完成，则直接执行回调
+                runCallback(callback);
+            } else {
+                // 如果尚未完成，则将回调添加到待处理列表中
+                this.pendingCallbacks.add(callback);
+            }
+        } finally {
+            // 无论如何都要释放锁
+            lock.unlock();
+        }
+        // 返回当前的RPCFuture对象，使得可以进行链式调用
+        return this;
+    }
+
+    /**
+     * 在客户端线程池中异步执行回调
+     * 此方法用于处理异步RPC调用的结果，并在客户端线程池中执行回调方法
+     * 如果响应没有错误，调用onSuccess方法并传入结果；如果有错误，创建一个RuntimeException并调用onException方法
+     *
+     * @param callback 异步RPC调用的回调接口，用于处理调用结果
+     */
+    private void runCallback(final AsyncRPCCallback callback) {
+        // 获取RPC响应的主体
+        final RpcResponse res = this.responseRpcProtocol.getBody();
+
+        // 提交一个任务到客户端线程池中执行
+        ClientThreadPool.submit(() -> {
+            // 判断响应是否没有错误
+            if (!res.isError()) {
+                // 如果没有错误，调用回调的onSuccess方法并传入结果
+                callback.onSuccess(res.getResult());
+            } else {
+                // 如果有错误，创建一个RuntimeException并调用回调的onException方法
+                callback.onException(new RuntimeException("Response error", new Throwable(res.getError())));
+            }
+        });
+    }
+
 
     /**
      * 自定义同步器实现
@@ -129,7 +212,6 @@ public class RPCFuture extends CompletableFuture<Object> {
 
         //定义Future状态
         private final int done = 1;
-        private final int pending = 0;
 
         /**
          * 尝试获取同步状态
@@ -146,6 +228,7 @@ public class RPCFuture extends CompletableFuture<Object> {
          */
         @Override
         protected boolean tryRelease(int releases) {
+            int pending = 0;
             if (getState() == pending) {
                 if (compareAndSetState(pending, done)) {
                     return true;
