@@ -6,7 +6,7 @@ import com.lizhe.bhrpcprotocol.RpcProtocol;
 import com.lizhe.bhrpcprotocol.header.RpcHeader;
 import com.lizhe.bhrpcprotocol.request.RpcRequest;
 import com.lizhe.bhrpcprotocol.response.RpcResponse;
-import future.RPCFuture;
+import com.lizhe.bhrpcconsumercommon.future.RPCFuture;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;

@@ -1,4 +1,4 @@
-package future;
+package com.lizhe.bhrpcconsumercommon.future;
 
 import com.lizhe.bhrpcprotocol.RpcProtocol;
 import com.lizhe.bhrpcprotocol.request.RpcRequest;
